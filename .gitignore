@@ -88,6 +88,11 @@ out
 dist
 .output
 
+# The browser and QR round-trip test require this vendored runtime bundle.
+!web/vendor/jsqr/dist/
+web/vendor/jsqr/dist/*
+!web/vendor/jsqr/dist/jsQR.js
+
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js
