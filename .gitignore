@@ -1,4 +1,9 @@
 # Logs
+cache/
+broadcast/
+web/deployment.json
+web/contract.json
+.demo/
 logs
 *.log
 npm-debug.log*

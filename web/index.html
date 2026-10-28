@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TicketMonster — A fairer way in</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">tm<span>TicketMonster</span></a>
+      <div class="wallet">
+        <span id="network">Connecting…</span
+        ><select id="account" aria-label="Demo account" hidden></select
+        ><button id="connect">Connect wallet</button>
+      </div>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">GOOD NIGHTS. FAIR TICKETS.</p>
+          <h1>Your next night out.<br /><em>Set in stone.</em></h1>
+          <p>
+            Find your people. Keep your place. Tickets and face-value resale,
+            with ownership you can verify.
+          </p>
+        </div>
+        <div class="hero-ticket">
+          <span>THE ADMIT-ONE REVOLUTION</span
+          ><strong>YOU’RE<br />ON THE LIST.</strong>
+          <div class="ticket-bottom">
+            ONE WALLET. YOUR WHOLE CREW. <span>↗</span>
+          </div>
+        </div>
+      </section>
+      <div class="notice" id="demo-note" hidden>
+        Local demo · Test ETH only · Every action runs against the deployed
+        smart contract.
+      </div>
+      <div id="status" role="status" aria-live="polite"></div>
+      <nav aria-label="Main">
+        <button data-tab="discover" class="active">Discover</button
+        ><button data-tab="tickets">My tickets & orders</button
+        ><button data-tab="organiser">Organiser studio</button
+        ><button data-tab="gate">At the gate</button
+        ><button id="refresh" class="quiet">↻ Refresh</button>
+      </nav>
+      <section id="discover" class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">MAKE IT A NIGHT</p>
+            <h2>On the calendar</h2>
+          </div>
+          <p>Face value. Every time.</p>
+        </div>
+        <div id="events" class="event-grid"></div>
+      </section>
+      <section id="tickets" class="panel" hidden>
+        <div class="section-heading">
+          <h2>Your tickets</h2>
+          <div>
+            <span id="credit"></span>
+            <button id="withdraw">Withdraw balance</button>
+          </div>
+        </div>
+        <p class="muted">
+          Groups hold seats in one wallet. Resale returns the ticket price and
+          deposit; attendance returns the deposit to the current holder.
+        </p>
+        <div id="my-tickets"></div>
+        <h2>Waiting orders</h2>
+        <p class="muted">
+          Orders are final while sales are open. Reclaim unfilled orders after
+          doors open or an event is cancelled.
+        </p>
+        <div id="orders"></div>
+      </section>
+      <section id="organiser" class="panel" hidden>
+        <h2>Organiser studio</h2>
+        <div class="studio-grid">
+          <form id="create-event">
+            <h3>Create an event</h3>
+            <label
+              >Event name<input name="name" maxlength="100" required /></label
+            ><label
+              >Doors open / sales end<input
+                type="datetime-local"
+                name="salesEnd"
+                required /></label
+            ><label
+              >Check-in closes<input
+                type="datetime-local"
+                name="checkInEnd"
+                required /></label
+            ><button>Create event</button>
+          </form>
+          <form id="create-category">
+            <h3>Add a ticket category</h3>
+            <label
+              >Event<select
+                name="eventId"
+                id="organiser-events"
+                required
+              ></select></label
+            ><label
+              >Category name<input name="label" maxlength="60" required
+            /></label>
+            <div class="fields">
+              <label
+                >Seats<input
+                  type="number"
+                  name="supply"
+                  min="1"
+                  max="4294967295"
+                  value="24"
+                  required /></label
+              ><label
+                >Price (ETH)<input name="price" value="0.01" required /></label
+              ><label
+                >Deposit (ETH)<input name="deposit" value="0.002" required
+              /></label>
+            </div>
+            <button>Create category</button>
+          </form>
+        </div>
+        <div id="manage-events"></div>
+      </section>
+      <section id="gate" class="panel" hidden>
+        <h2>Meet you at the gate.</h2>
+        <p class="muted">
+          The organiser issues a short-lived challenge. The ticket holder signs
+          it, then returns their proof for verification and admission. A
+          signature does not transfer tickets or ETH.
+        </p>
+        <div class="studio-grid">
+          <form id="gate-challenge">
+            <h3>1. Organiser: issue a challenge</h3>
+            <label
+              >Category<select
+                id="gate-categories"
+                name="categoryId"
+                required
+              ></select></label
+            ><label
+              >Holder wallet<input name="holder" placeholder="0x…" required
+            /></label>
+            <div class="fields">
+              <label
+                >First seat ID<input
+                  type="number"
+                  name="firstSeat"
+                  min="0"
+                  value="0"
+                  required /></label
+              ><label
+                >Group size<input
+                  type="number"
+                  name="qty"
+                  min="1"
+                  max="10"
+                  value="1"
+                  required
+              /></label>
+            </div>
+            <button>Issue challenge</button
+            ><label
+              >Share this challenge<textarea
+                id="challenge-output"
+                readonly
+              ></textarea>
+            </label>
+          </form>
+          <form id="gate-sign">
+            <h3>2. Holder: sign your challenge</h3>
+            <label
+              >Paste the organiser’s challenge<textarea
+                name="challenge"
+                required
+              ></textarea></label
+            ><button>Sign admission proof</button
+            ><label
+              >Return this proof<textarea id="proof-output" readonly></textarea>
+            </label>
+            <div id="proof-qr"></div>
+          </form>
+          <form id="gate-consume">
+            <h3>3. Organiser: verify & admit</h3>
+            <label
+              >Scan a proof QR image<input
+                id="proof-image"
+                type="file"
+                accept="image/*"
+            /></label>
+            <label
+              >Paste signed proof<textarea
+                name="proof"
+                required
+              ></textarea></label
+            ><button>Verify & check in</button>
+            <p class="muted">
+              Checks the signature, chain, contract, expiry, issued nonce,
+              ownership and unused seats before submitting check-in.
+            </p>
+          </form>
+        </div>
+      </section>
+      <section class="how">
+        <article>
+          <span>01 / YOUR PLACE</span>
+          <h3>Buy together. Sit together.</h3>
+          <p>
+            Primary seats are assigned in order. Rows turn in a snake pattern to
+            keep groups close.
+          </p>
+        </article>
+        <article>
+          <span>02 / PLANS CHANGE</span>
+          <h3>Pass on the night.</h3>
+          <p>
+            Resell through the queue at face value. No markups, no direct
+            transfers, no guessing who owns what.
+          </p>
+        </article>
+        <article>
+          <span>03 / SHOW UP</span>
+          <h3>Get your deposit back.</h3>
+          <p>
+            Check in with your group at the gate. Your attendance deposit
+            becomes a withdrawable balance.
+          </p>
+        </article>
+      </section>
+    </main>
+    <footer>
+      <span>TicketMonster / IS4302</span
+      ><span>Ownership on-chain. Good times in real life.</span>
+    </footer>
+    <script src="/qr.js"></script>
+    <script src="/vendor/jsqr/dist/jsQR.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

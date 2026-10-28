@@ -1,0 +1,16 @@
+.git
+.github
+.DS_Store
+node_modules
+.npm
+out
+cache
+broadcast
+.demo
+coverage
+*.log
+.env
+.env.*
+!.env.example
+web/contract.json
+web/deployment.json
