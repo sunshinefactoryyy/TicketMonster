@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 
-test("vendored QR encoder and scanner round-trip an admission-size proof", () => {
+test("vendored QR encoder and scanner round-trip a gate-pass-size proof", () => {
   const encoder = { module: { exports: {} }, exports: {} };
   const decoder = { module: { exports: {} }, exports: {}, Uint8ClampedArray };
   runInNewContext(readFileSync("web/vendor/qrcode.js", "utf8"), encoder);
@@ -12,10 +12,9 @@ test("vendored QR encoder and scanner round-trip an admission-size proof", () =>
     decoder
   );
   const payload = JSON.stringify({
-    challenge: {
+    pass: {
       chainId: 31337,
       contract: process.env.TEST_QR_ADDRESS || "0x" + "11".repeat(20),
-      gate: "0x" + "22".repeat(20),
       holder: "0x" + "33".repeat(20),
       categoryId: 1,
       firstSeat: 0,

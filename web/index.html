@@ -12,6 +12,10 @@
       <div class="wallet">
         <span id="network">Connecting…</span
         ><select id="account" aria-label="Demo account" hidden></select
+        ><span
+          id="balance"
+          title="Wallet ETH balance. Withdrawable credit is shown under My tickets & orders."
+        ></span
         ><button id="connect">Connect wallet</button>
       </div>
     </header>
@@ -128,78 +132,43 @@
       <section id="gate" class="panel" hidden>
         <h2>Meet you at the gate.</h2>
         <p class="muted">
-          The organiser issues a short-lived challenge. The ticket holder signs
-          it, then returns their proof for verification and admission. A
-          signature does not transfer tickets or ETH.
+          The ticket holder’s wallet signs a five-minute gate pass, shown as a
+          QR code. The organiser scans it, checks the signature against current
+          on-chain ownership, then admits the group. A signature does not
+          transfer tickets or ETH.
         </p>
         <div class="studio-grid">
-          <form id="gate-challenge">
-            <h3>1. Organiser: issue a challenge</h3>
+          <form id="gate-sign">
+            <h3>1. Holder: show your gate pass</h3>
             <label
-              >Category<select
-                id="gate-categories"
-                name="categoryId"
+              >Seats ready for check-in<select
+                id="gate-seats"
+                name="group"
                 required
               ></select></label
+            ><button>Sign gate pass</button
             ><label
-              >Holder wallet<input name="holder" placeholder="0x…" required
-            /></label>
-            <div class="fields">
-              <label
-                >First seat ID<input
-                  type="number"
-                  name="firstSeat"
-                  min="0"
-                  value="0"
-                  required /></label
-              ><label
-                >Group size<input
-                  type="number"
-                  name="qty"
-                  min="1"
-                  max="10"
-                  value="1"
-                  required
-              /></label>
-            </div>
-            <button>Issue challenge</button
-            ><label
-              >Share this challenge<textarea
-                id="challenge-output"
-                readonly
-              ></textarea>
-            </label>
-          </form>
-          <form id="gate-sign">
-            <h3>2. Holder: sign your challenge</h3>
-            <label
-              >Paste the organiser’s challenge<textarea
-                name="challenge"
-                required
-              ></textarea></label
-            ><button>Sign admission proof</button
-            ><label
-              >Return this proof<textarea id="proof-output" readonly></textarea>
+              >Pass text<textarea id="proof-output" readonly></textarea>
             </label>
             <div id="proof-qr"></div>
           </form>
           <form id="gate-consume">
-            <h3>3. Organiser: verify & admit</h3>
+            <h3>2. Organiser: scan & admit</h3>
             <label
-              >Scan a proof QR image<input
+              >Scan a gate pass QR image<input
                 id="proof-image"
                 type="file"
                 accept="image/*"
             /></label>
             <label
-              >Paste signed proof<textarea
+              >Or paste the pass text<textarea
                 name="proof"
                 required
               ></textarea></label
             ><button>Verify & check in</button>
             <p class="muted">
-              Checks the signature, chain, contract, expiry, issued nonce,
-              ownership and unused seats before submitting check-in.
+              Checks the holder’s signature, chain, contract and expiry, then
+              current ownership and unused seats, before submitting check-in.
             </p>
           </form>
         </div>

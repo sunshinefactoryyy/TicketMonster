@@ -6,7 +6,8 @@ import {
   groupSeats,
   phase,
   admissionMessage,
-  validateChallenge,
+  readProof,
+  validatePass,
 } from "../web/domain.js";
 
 test("snake seating keeps row-boundary seats directly behind one another", () => {
@@ -34,48 +35,82 @@ test("sales and check-in boundary rules match the contract", () => {
   assert.equal(phase(e, 200), "Ended");
   assert.equal(phase({ ...e, cancelled: true }, 99), "Cancelled");
 });
-test("admission signature binds holder, gate, chain, contract, seat range and expiry", async () => {
+test("gate pass signature binds holder, chain, contract, seat range, expiry and nonce", async () => {
   const holder = Wallet.createRandom(),
-    gate = Wallet.createRandom();
+    other = Wallet.createRandom();
   const d = { chainId: 31337, address: Wallet.createRandom().address };
-  const c = {
+  const p = {
     chainId: d.chainId,
     contract: d.address,
-    gate: gate.address,
     holder: holder.address,
     categoryId: 1,
     firstSeat: 0,
     qty: 2,
-    expires: 1200,
+    expires: 1300,
     nonce: "ab".repeat(32),
   };
-  validateChallenge(c, d, 1000);
-  const signature = await holder.signMessage(admissionMessage(c));
-  assert.equal(verifyMessage(admissionMessage(c), signature), holder.address);
+  validatePass(p, d, 1000);
+  const signature = await holder.signMessage(admissionMessage(p));
+  assert.equal(verifyMessage(admissionMessage(p), signature), holder.address);
+  // Editing any field, including re-targeting the pass at another wallet's
+  // seats, no longer recovers the holder the pass names.
   for (const change of [
     { qty: 3 },
     { firstSeat: 1 },
+    { categoryId: 2 },
     { chainId: 1 },
-    { contract: gate.address },
-    { gate: holder.address },
-    { expires: 1199 },
+    { contract: other.address },
+    { holder: other.address },
+    { expires: 1299 },
     { nonce: "cd".repeat(32) },
-  ])
+  ]) {
+    const edited = { ...p, ...change };
     assert.notEqual(
-      verifyMessage(admissionMessage({ ...c, ...change }), signature),
-      holder.address
+      verifyMessage(admissionMessage(edited), signature),
+      edited.holder
     );
-  assert.throws(() => validateChallenge(c, d, 1200), /expired/);
+  }
+  // A pass written up for someone else's seats but signed by another wallet.
+  const forged = await other.signMessage(admissionMessage(p));
+  assert.notEqual(verifyMessage(admissionMessage(p), forged), p.holder);
+  assert.throws(() => validatePass(p, d, 1300), /expired/);
   assert.throws(
-    () => validateChallenge({ ...c, chainId: 1 }, d, 1000),
+    () => validatePass({ ...p, chainId: 1 }, d, 1000),
     /different chain/
   );
+  assert.throws(() => validatePass({ ...p, qty: 0 }, d, 1000), /seat range/);
+  assert.throws(() => validatePass({ ...p, qty: 11 }, d, 1000), /seat range/);
   assert.throws(
-    () => validateChallenge({ ...c, qty: 0 }, d, 1000),
-    /seat range/
+    () => validatePass({ ...p, holder: "0x1234" }, d, 1000),
+    /wallet address/
   );
+});
+test("gate pass lifetime allows one minute of holder clock skew", () => {
+  const d = { chainId: 31337, address: "0x" + "11".repeat(20) };
+  const p = {
+    chainId: 31337,
+    contract: d.address,
+    holder: "0x" + "22".repeat(20),
+    categoryId: 1,
+    firstSeat: 0,
+    qty: 1,
+    nonce: "ab".repeat(32),
+  };
+  validatePass({ ...p, expires: 1360 }, d, 1000);
   assert.throws(
-    () => validateChallenge({ ...c, expires: 1400 }, d, 1000),
+    () => validatePass({ ...p, expires: 1361 }, d, 1000),
     /five minutes/
   );
+});
+test("pass text must contain a pass and a signature", () => {
+  const proof = { pass: { qty: 1 }, signature: "0x12" };
+  assert.deepEqual(readProof(JSON.stringify(proof)), proof);
+  for (const text of [
+    "not json",
+    "{}",
+    '{"pass":null,"signature":"0x12"}',
+    '{"pass":{"qty":1}}',
+    '{"challenge":{},"signature":"0x12"}',
+  ])
+    assert.throws(() => readProof(text), /Not a TicketMonster gate pass/);
 });

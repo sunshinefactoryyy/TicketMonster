@@ -24,38 +24,53 @@ export function phase(event, now) {
     ? "Doors open"
     : "Ended";
 }
-export function admissionMessage(c) {
+export const PASS_LIFETIME = 300;
+// The holder's device sets the expiry, so the gate allows for its clock
+// running up to a minute ahead.
+const CLOCK_SKEW = 60;
+export function admissionMessage(p) {
   return [
-    "TicketMonster admission v1",
-    `Chain: ${c.chainId}`,
-    `Contract: ${c.contract.toLowerCase()}`,
-    `Gate: ${c.gate.toLowerCase()}`,
-    `Holder: ${c.holder.toLowerCase()}`,
-    `Category: ${c.categoryId}`,
-    `First seat: ${c.firstSeat}`,
-    `Quantity: ${c.qty}`,
-    `Expires: ${c.expires}`,
-    `Nonce: ${c.nonce}`,
+    "TicketMonster gate pass v2",
+    `Chain: ${p.chainId}`,
+    `Contract: ${p.contract.toLowerCase()}`,
+    `Holder: ${p.holder.toLowerCase()}`,
+    `Category: ${p.categoryId}`,
+    `First seat: ${p.firstSeat}`,
+    `Quantity: ${p.qty}`,
+    `Expires: ${p.expires}`,
+    `Nonce: ${p.nonce}`,
   ].join("\n");
 }
-export function validateChallenge(c, deployment, now) {
+export function readProof(text) {
+  let proof;
+  try {
+    proof = JSON.parse(text);
+  } catch {}
   if (
-    String(c.chainId) !== String(deployment.chainId) ||
-    c.contract?.toLowerCase() !== deployment.address.toLowerCase()
+    !proof?.pass ||
+    typeof proof.pass !== "object" ||
+    typeof proof.signature !== "string"
   )
-    throw new Error("This proof is for a different chain or contract.");
-  for (const key of ["gate", "holder"])
-    if (!/^0x[0-9a-f]{40}$/i.test(c[key]))
-      throw new Error("Invalid wallet address.");
-  for (const key of ["categoryId", "firstSeat", "qty", "expires"])
-    if (!Number.isSafeInteger(c[key]))
-      throw new Error("Invalid challenge numbers.");
-  if (c.categoryId < 1 || c.firstSeat < 0 || c.qty < 1 || c.qty > 10)
-    throw new Error("Invalid seat range.");
-  if (c.expires <= now || c.expires > now + 300)
     throw new Error(
-      "Challenge expired or exceeds five minutes. Request a fresh challenge."
+      "Not a TicketMonster gate pass. Paste the full pass text or scan its QR code."
     );
-  if (!/^[0-9a-f]{64}$/.test(c.nonce))
-    throw new Error("Invalid challenge nonce.");
+  return proof;
+}
+export function validatePass(p, deployment, now) {
+  if (
+    String(p.chainId) !== String(deployment.chainId) ||
+    p.contract?.toLowerCase() !== deployment.address.toLowerCase()
+  )
+    throw new Error("This pass is for a different chain or contract.");
+  if (!/^0x[0-9a-f]{40}$/i.test(p.holder))
+    throw new Error("Invalid wallet address.");
+  for (const key of ["categoryId", "firstSeat", "qty", "expires"])
+    if (!Number.isSafeInteger(p[key])) throw new Error("Invalid pass numbers.");
+  if (p.categoryId < 1 || p.firstSeat < 0 || p.qty < 1 || p.qty > 10)
+    throw new Error("Invalid seat range.");
+  if (p.expires <= now || p.expires > now + PASS_LIFETIME + CLOCK_SKEW)
+    throw new Error(
+      "Gate pass expired or exceeds five minutes. Ask the holder to show a fresh pass."
+    );
+  if (!/^[0-9a-f]{64}$/.test(p.nonce)) throw new Error("Invalid pass nonce.");
 }

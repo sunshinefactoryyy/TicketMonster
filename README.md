@@ -59,8 +59,8 @@ For MetaMask, add the local RPC `http://127.0.0.1:8545`, chain ID `31337`, and u
 - Consecutive primary seating, compact ownership, bounded lookup anchors and bitmap check-in. Resale seating can be separated.
 - Cancellation before doors open, holder refunds, and recovery of unfilled escrow/seats after cancellation or sales close.
 - Organiser proceeds after doors open; attendance deposit credits; bounded no-show settlement after check-in closes.
-- Wallet-connected UI with event discovery, snake seat maps, ownership reconstructed from logs and verified against current storage, queue recovery, organiser controls, and gate admission.
-- Gate-issued expiring challenges, holder signatures and QR proofs. The gate scans an uploaded QR image entirely in the browser or accepts pasted proof text. Camera capture is not required.
+- Wallet-connected UI with the selected wallet's ETH balance, event discovery, snake seat maps, ownership reconstructed from logs and verified against current storage, queue recovery, organiser controls, and gate admission.
+- Holder-signed, five-minute gate passes shown as QR codes. The gate scans an uploaded QR image entirely in the browser or accepts pasted pass text, then checks the signature against current on-chain ownership. Camera capture is not required.
 - Solidity regression/fuzz tests, browser-domain tests and a local demo runner.
 
 Read [the demo runbook](docs/DEMO.md), [design and Lecture 5 discussion](docs/DESIGN.md), [requirements map](docs/REQUIREMENTS.md), and [verification results](docs/VERIFICATION.md).

@@ -38,3 +38,16 @@ Successful build and healthy startup were reported on Apple Silicon after runnin
 - No browser warnings or errors were recorded during this Docker smoke check.
 
 The amd64 download path is configured and its release assets were verified, but an amd64 container has not been tested. The isolated Docker demo remains on port 4174 with one purchased ticket; restarting it resets the chain.
+
+## Holder-signed gate pass and wallet balance (31 October 2026)
+
+The gate flow was changed from gate-issued challenges to a single holder-signed pass, and the header now shows the selected wallet's ETH balance. The Docker image build ran `npm run check`: 17 Solidity and 11 Node tests pass, including new pass tests for field tampering, re-targeting at another wallet, a pass signed by the wrong wallet, clock-skew bounds and malformed pass text.
+
+Headless Chrome, driven by Playwright, exercised a fresh isolated container on Windows (Docker Desktop, amd64):
+
+- The balance appeared beside the selector, changed on account switch, fell by 0.03 ETH when Charlie bought three Neon seats, and rose by 0.006 ETH when he withdrew his deposit credit.
+- Before doors opened, Charlie's pass dropdown showed no seats. Afterwards it listed seat IDs 0–2. Signing produced pass text and a QR image.
+- An Alice-selected gate was refused as not the organiser. A copy of Charlie's pass edited to name Bob's seats failed signature recovery, and non-pass text was rejected.
+- The organiser uploaded the saved QR image. It decoded to the identical pass text and checked Charlie in. Submitting it again was rejected because seat 0 was already used. Bob was checked in from pasted pass text.
+
+The only console error was Chrome's request for the absent `/favicon.ico`. External-wallet (MetaMask) signing, camera capture and mobile devices remain untested.

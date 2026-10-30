@@ -13,7 +13,9 @@ import {
   groupSeats,
   phase,
   admissionMessage,
-  validateChallenge,
+  readProof,
+  validatePass,
+  PASS_LIFETIME,
 } from "./domain.js";
 
 const $ = (s) => document.querySelector(s);
@@ -26,6 +28,11 @@ const esc = (v) =>
       ])
   );
 const eth = (x) => formatEther(x);
+const balanceText = (x) =>
+  `${Number(formatEther(x)).toLocaleString([], {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })} ETH`;
 const same = (a, b) => a?.toLowerCase() === b?.toLowerCase();
 const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const date = (t) =>
@@ -193,9 +200,22 @@ async function refresh() {
       })
     )
   ).filter((o) => o.qty > 0);
-  const credit = account ? await contract.credit(account, at) : 0n;
+  const [credit, balance] = account
+    ? await Promise.all([
+        contract.credit(account, at),
+        provider.getBalance(account, block.number),
+      ])
+    : [0n, null];
   if (seq !== generation) return;
-  data = { events, categories, seats, orders, credit, now: block.timestamp };
+  data = {
+    events,
+    categories,
+    seats,
+    orders,
+    credit,
+    balance,
+    now: block.timestamp,
+  };
   render();
 }
 function options(selector, rows) {
@@ -205,7 +225,8 @@ function options(selector, rows) {
   if ([...el.options].some((o) => o.value === v)) el.value = v;
 }
 function render() {
-  const { events, categories, seats, orders, credit, now } = data;
+  const { events, categories, seats, orders, credit, balance, now } = data;
+  $("#balance").textContent = balance === null ? "" : balanceText(balance);
   const quantities = new Map(
     [...document.querySelectorAll('[id^="qty-"]')].map((el) => [
       el.id,
@@ -372,16 +393,25 @@ function render() {
       .join("")
   );
   options(
-    "#gate-categories",
+    "#gate-seats",
     categories
-      .filter((c) => own.some((e) => e.id === c.eventId))
-      .map(
-        (c) =>
-          `<option value="${c.id}">${esc(
-            events.find((e) => e.id === c.eventId).name
-          )} / ${esc(c.label)}</option>`
-      )
-      .join("")
+      .flatMap((c) => {
+        const e = events.find((e) => e.id === c.eventId);
+        if (phase(e, now) !== "Doors open") return [];
+        return groupSeats(
+          seats
+            .filter((s) => s.categoryId === c.id && !s.used)
+            .map((s) => s.seat)
+        ).map(
+          (g) =>
+            `<option value="${c.id},${g.firstSeat},${g.qty}">${esc(
+              e.name
+            )} / ${esc(c.label)} · seat IDs ${g.firstSeat}–${
+              g.firstSeat + g.qty - 1
+            }</option>`
+        );
+      })
+      .join("") || '<option value="">No seats ready for check-in</option>'
   );
   $("#manage-events").innerHTML = own
     .map(
@@ -493,61 +523,38 @@ form("#create-category", (f) =>
     parseEther(f.deposit),
   ])
 );
-const challengesKey = () =>
-  `tm-challenges:${deployment.chainId}:${deployment.address}:${account}`;
-function issued() {
-  return JSON.parse(sessionStorage.getItem(challengesKey()) || "{}");
-}
-form("#gate-challenge", async (f) => {
-  if (!account) throw Error("Connect the organiser wallet.");
-  const c = {
+form("#gate-sign", async (f) => {
+  if (!signer) throw Error("Connect the ticket holder wallet.");
+  const [categoryId, firstSeat, qty] = f.group.split(",").map(Number);
+  const pass = {
     chainId: deployment.chainId,
     contract: deployment.address,
-    gate: account,
-    holder: getAddress(f.holder),
-    categoryId: Number(f.categoryId),
-    firstSeat: Number(f.firstSeat),
-    qty: Number(f.qty),
-    expires: Math.floor(Date.now() / 1000) + 300,
+    holder: getAddress(account),
+    categoryId,
+    firstSeat,
+    qty,
+    expires: Math.floor(Date.now() / 1000) + PASS_LIFETIME,
     nonce: Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
       b.toString(16).padStart(2, "0")
     ).join(""),
   };
-  validateChallenge(c, deployment, Math.floor(Date.now() / 1000));
-  const category = await contract.categories(c.categoryId),
-    event = await contract.events(category.eventId);
-  if (!same(event.organiser, account))
-    throw Error("Only this event’s organiser can issue its gate challenge.");
-  const record = issued();
-  record[c.nonce] = c;
-  sessionStorage.setItem(challengesKey(), JSON.stringify(record));
-  $("#challenge-output").value = JSON.stringify(c);
-  status(
-    "Challenge ready. Share it with the ticket holder; it expires in five minutes."
-  );
-});
-form("#gate-sign", async (f) => {
-  if (!signer) throw Error("Connect the ticket holder wallet.");
-  const c = JSON.parse(f.challenge);
-  validateChallenge(c, deployment, Math.floor(Date.now() / 1000));
-  if (!same(c.holder, account))
-    throw Error("Switch to the holder wallet named in this challenge.");
-  const category = await contract.categories(c.categoryId),
-    event = await contract.events(category.eventId);
-  if (!same(event.organiser, c.gate))
-    throw Error("The challenge is not from this event’s organiser.");
-  const signature = await signer.signMessage(admissionMessage(c));
-  const proof = JSON.stringify({ challenge: c, signature });
+  validatePass(pass, deployment, Math.floor(Date.now() / 1000));
+  const signature = await signer.signMessage(admissionMessage(pass));
+  const proof = JSON.stringify({ pass, signature });
   $("#proof-output").value = proof;
   if (window.qrcode) {
     const qr = window.qrcode(0, "L");
     qr.addData(proof);
     qr.make();
     $("#proof-qr").innerHTML = qr.createImgTag(3, 12);
-    $("#proof-qr img").alt = "Signed admission proof QR code";
+    $("#proof-qr img").alt = "Signed gate pass QR code";
   }
   status(
-    "Admission proof signed. Return it to the gate; it authorises only this seat range."
+    `Gate pass signed for seat IDs ${firstSeat}–${
+      firstSeat + qty - 1
+    }. Show it at the gate before ${new Date(
+      pass.expires * 1000
+    ).toLocaleTimeString()}.`
   );
 });
 $("#proof-image").addEventListener("change", (e) =>
@@ -570,12 +577,8 @@ $("#proof-image").addEventListener("change", (e) =>
         throw Error(
           "No readable QR code found. Try a sharper image or paste the proof text."
         );
-      const proof = JSON.parse(decoded.data);
-      validateChallenge(
-        proof.challenge,
-        deployment,
-        Math.floor(Date.now() / 1000)
-      );
+      const proof = readProof(decoded.data);
+      validatePass(proof.pass, deployment, Math.floor(Date.now() / 1000));
       $("#gate-consume textarea").value = decoded.data;
       status(
         "QR decoded locally. Verify & check in to validate the signature and admit the holder."
@@ -587,28 +590,33 @@ $("#proof-image").addEventListener("change", (e) =>
 );
 
 form("#gate-consume", async (f) => {
-  const { challenge: c, signature } = JSON.parse(f.proof);
-  validateChallenge(c, deployment, Math.floor(Date.now() / 1000));
-  const record = issued();
-  if (
-    !same(c.gate, account) ||
-    !record[c.nonce] ||
-    admissionMessage(record[c.nonce]) !== admissionMessage(c)
-  )
-    throw Error(
-      "This gate session did not issue this challenge, or it was already used."
-    );
-  if (!same(verifyMessage(admissionMessage(c), signature), c.holder))
+  if (!signer) throw Error("Connect the organiser wallet.");
+  const { pass: p, signature } = readProof(f.proof);
+  validatePass(p, deployment, Math.floor(Date.now() / 1000));
+  // The signature is what proves the pass came from the holder's wallet rather
+  // than being typed up or edited: any changed field recovers another address.
+  let signedBy;
+  try {
+    signedBy = verifyMessage(admissionMessage(p), signature);
+  } catch {}
+  if (!same(signedBy, p.holder))
     throw Error("Signature does not match the ticket holder.");
-  for (let s = c.firstSeat; s < c.firstSeat + c.qty; s++) {
-    if (!same(await contract.ownerOf(c.categoryId, s), c.holder))
+  const category = await contract.categories(p.categoryId),
+    event = await contract.events(category.eventId);
+  if (!same(event.organiser, account))
+    throw Error("Only this event’s organiser can check in its tickets.");
+  for (let s = p.firstSeat; s < p.firstSeat + p.qty; s++) {
+    if (!same(await contract.ownerOf(p.categoryId, s), p.holder))
       throw Error(`Holder no longer owns seat ${s}.`);
-    if (await contract.isCheckedIn(c.categoryId, s))
+    if (await contract.isCheckedIn(p.categoryId, s))
       throw Error(`Seat ${s} is already used.`);
   }
-  await transact("consumeTicket", [c.categoryId, c.firstSeat, c.qty, c.holder]);
-  delete record[c.nonce];
-  sessionStorage.setItem(challengesKey(), JSON.stringify(record));
+  await transact("consumeTicket", [p.categoryId, p.firstSeat, p.qty, p.holder]);
+  status(
+    `Checked in seat IDs ${p.firstSeat}–${p.firstSeat + p.qty - 1} for ${short(
+      p.holder
+    )}; their deposit is now withdrawable credit.`
+  );
 });
 async function wallet() {
   if (!window.ethereum)

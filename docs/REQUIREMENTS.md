@@ -13,7 +13,7 @@ Sources: supplied `TicketMonster.sol` and `TicketMonster.t.sol`, 10 October revi
 | No cancellation of live orders                        | `reclaimOrder` lifecycle guard                                      | supplied full flow and seller reclaim tests                                    |
 | Reclaim unfilled buyer/seller orders                  | `reclaimOrder`                                                      | supplied flow; cancellation queue tests                                        |
 | Deposit check-in, no duplicate consumption            | `consumeTicket`, bitmap                                             | supplied full flow; escrow regression; exact-time checks                       |
-| Wallet ownership proof at gate                        | nonce, EIP-191 signature, QR, gate validation                       | signature-domain tests; browser gate walkthrough                               |
+| Wallet ownership proof at gate                        | holder-signed EIP-191 gate pass, QR, gate validation                | signature-domain tests; browser gate walkthrough                               |
 | Proceeds only after sales end                         | `withdrawProceeds`                                                  | supplied full flow; permission/time test                                       |
 | Cancellation refunds fully funded                     | `cancelEvent`, `claimRefund`, proceeds accounting                   | original refund test; queue cancellation and seller reclamation tests          |
 | No-show payouts once after check-in                   | bitmap popcount + bounded cursor                                    | supplied no-show tests; batch-boundary regression                              |

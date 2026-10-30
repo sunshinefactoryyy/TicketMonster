@@ -51,6 +51,10 @@ header {
   align-items: center;
   font-size: 12px;
 }
+#balance {
+  font-weight: 600;
+  white-space: nowrap;
+}
 button,
 select,
 input,

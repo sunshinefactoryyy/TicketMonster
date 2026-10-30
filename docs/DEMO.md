@@ -1,6 +1,6 @@
 # Presentation runbook
 
-Run `docker compose up --build`, or use the native setup: `npm ci`, `npm run check`, and `npm run demo`. Open http://127.0.0.1:4173. Restart the demo for a fresh chain. All ETH is local test currency. Account switching is for the demonstration; a real attendee uses their own wallet.
+Run `docker compose up --build`, or use the native setup: `npm ci`, `npm run check`, and `npm run demo`. Open http://127.0.0.1:4173. Restart the demo for a fresh chain. All ETH is local test currency. Account switching is for the demonstration; a real attendee uses their own wallet. The selected account's wallet ETH balance is shown beside the account selector; withdrawable contract credit is shown separately under **My tickets & orders** and only reaches the wallet balance when withdrawn.
 
 ## 1. Discovery and public ownership (about one minute)
 
@@ -13,7 +13,7 @@ Show the two events, fixed prices, separate refundable deposits and seat maps. E
 3. Select Charlie and buy three. Charlie has a prepaid buyer order and no seats yet.
 4. Select Alice and resell the four-seat group. Charlie receives seats 0–2 immediately; seat 3 waits in the seller queue. Alice has 0.03 ETH withdrawable credit for the three filled tickets.
 5. Select Dana and buy one. Dana receives seat 3; Alice's credit becomes 0.04 ETH. The organiser receives no extra primary proceeds from these resales.
-6. Select Alice and withdraw. This transfers credit back to her local wallet.
+6. Select Alice and withdraw. This transfers credit back to her local wallet: her balance beside the account selector rises by 0.04 ETH, less a little gas.
 7. Select Alice and buy one again. This creates an unfilled buyer order to reclaim later.
 
 Purchasing or listing is final while sales are open. Any unfilled part of a purchase is prepaid escrow, not a guaranteed seat. The app shows this before submission. Fixed prices prevent an in-contract markup, but side payments and wallet resale remain limitations.
@@ -30,14 +30,12 @@ Do this before advancing the clock: cancellation is forbidden once the event's s
 
 1. Select Organiser and **Demo: open doors** for **Neon Garden**. This advances the local chain time to sales end. All trading stops.
 2. Select Alice and reclaim her unfilled buyer order, then withdraw the returned credit.
-3. Select Charlie and note his full wallet address from `/deployment.json` in the browser (account index 3; also `web/deployment.json` on a native install).
-4. Select Organiser, open **At the gate**, select Neon Garden's category, enter Charlie's address, first seat `0`, group size `3`, and issue a challenge. Copy its JSON.
-5. Select Charlie, paste the challenge in step 2 and sign. The app displays a proof JSON and QR code. Copy the proof JSON.
-6. Select Organiser, paste that proof into step 3 (or save the QR image and choose it under **Scan a proof QR image**) and **Verify & check in**. Charlie's seats are marked used and his 0.006 ETH deposit is credited.
-7. Try the same proof again: the gate rejects replay. If the challenge expired after five real minutes, issue a fresh one.
-8. Repeat for Bob, first seat `4`, group size `2` (account index 2). Bob receives 0.004 ETH deposit credit. Leave Dana absent.
+3. Select Charlie, open **At the gate**, choose **Neon Garden / General admission · seat IDs 0–2** and **Sign gate pass**. The app shows a QR code and the pass text; the pass expires after five minutes. Copy the pass text.
+4. Select Organiser, paste the pass into step 2 (or save the QR image and choose it under **Scan a gate pass QR image**) and **Verify & check in**. Charlie's seats are marked used and his 0.006 ETH deposit is credited.
+5. Click **Verify & check in** again with the same pass: the gate rejects it because the seats are already used on-chain. If the pass expired after five real minutes, have the holder sign a fresh one.
+6. Repeat for Bob (seat IDs 4–5). Bob receives 0.004 ETH deposit credit. Leave Dana absent.
 
-The signature binds all admission details. The organiser still attests to physical attendance; blockchain cannot independently observe the venue door. On-chain state prevents repeated consumption.
+The holder's wallet signs every pass detail; editing any field, such as the seats or the holder address, invalidates the signature. The gate needs no prior contact with the holder. A copied pass that is still unexpired and unused would admit whoever presents it first: the five-minute expiry bounds that window, and the on-chain check-in makes every copy useless once the seats are used. The organiser still attests to physical attendance; blockchain cannot independently observe the venue door.
 
 ## 5. Settlement and trust discussion (about one minute)
 
